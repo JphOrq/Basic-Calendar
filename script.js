@@ -88,8 +88,11 @@ var generateCalendar = (year, month) => {
         : null;
     var holidayClass = holidayInfo ? holidayInfo.type : "";
     var holidayTitle = holidayInfo ? ` title="${holidayInfo.name}"` : "";
+    var holidayData = holidayInfo
+      ? ` data-holiday-name="${holidayInfo.name}" data-holiday-type="${holidayInfo.type}"`
+      : "";
 
-    lit += `<li class="${isToday} ${sundayClass} ${holidayClass}"${holidayTitle}>${i}</li>`;
+    lit += `<li class="${isToday} ${sundayClass} ${holidayClass}"${holidayTitle}${holidayData}>${i}</li>`;
   }
 
   for (var i = dayend; i < 6; i++) {
@@ -159,58 +162,134 @@ document.addEventListener("DOMContentLoaded", function () {
   }
 });
 
+// Holiday Modal
+var holidayModal = document.getElementById("holiday-modal");
+var modalOverlay = document.getElementById("modal-overlay");
+var modalClose = document.getElementById("modal-close");
+var modalTitle = document.getElementById("modal-title");
+var modalDate = document.getElementById("modal-date");
+var modalHolidayName = document.getElementById("modal-holiday-name");
+var modalHolidayType = document.getElementById("modal-holiday-type");
+
+function openHolidayModal(day, monthName, yearVal, holidayName, holidayType, isWeekend) {
+  modalTitle.textContent = holidayName ? holidayName : "No Holiday";
+  modalDate.textContent = monthName + " " + day + ", " + yearVal;
+
+  if (holidayName) {
+    modalHolidayName.textContent = holidayName;
+    modalHolidayName.style.display = "block";
+    var typeLabel = holidayType
+      .replace("regular-holiday", "Regular Holiday")
+      .replace("special-non-working", "Special (Non-Working) Day")
+      .replace("special-working", "Special (Working) Day");
+    modalHolidayType.textContent = typeLabel + (isWeekend ? " • No working day" : "");
+    modalHolidayType.style.display = "block";
+  } else {
+    if (isWeekend) {
+      modalHolidayName.textContent = "No working day";
+      modalHolidayName.style.display = "block";
+      modalHolidayType.style.display = "none";
+    } else {
+      modalHolidayName.textContent = "This is a regular working day.";
+      modalHolidayName.style.display = "block";
+      modalHolidayType.style.display = "none";
+    }
+  }
+  holidayModal.style.display = "block";
+}
+
+function closeHolidayModal() {
+  holidayModal.style.display = "none";
+}
+
+allMonthsContainer.addEventListener("click", function (e) {
+  var li = e.target.closest(".calendar-dates li");
+  if (!li || li.classList.contains("inactive")) return;
+
+  var day = parseInt(li.textContent);
+  var monthContainer = li.closest(".month-container");
+  var monthYear = monthContainer.querySelector(".calendar-header p").textContent;
+  var parts = monthYear.split(" ");
+  var monthName = parts[0];
+  var yearVal = parseInt(parts[1]);
+
+  var monthIndex = months.indexOf(monthName);
+  var dayOfWeek = new Date(yearVal, monthIndex, day).getDay();
+  var isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+  var holidayName = li.getAttribute("data-holiday-name");
+  var holidayType = li.getAttribute("data-holiday-type");
+
+  openHolidayModal(day, monthName, yearVal, holidayName, holidayType, isWeekend);
+});
+
+modalClose.addEventListener("click", closeHolidayModal);
+modalOverlay.addEventListener("click", closeHolidayModal);
+
+document.addEventListener("keydown", function (e) {
+  if (e.key === "Escape" && holidayModal.style.display === "block") {
+    closeHolidayModal();
+  }
+});
+
 document.getElementById("export-pdf").addEventListener("click", function () {
   var { jsPDF } = window.jspdf;
-  var doc = new jsPDF("p", "mm", "a4");
+  var doc = new jsPDF("l", "mm", "a4");
   var pageWidth = doc.internal.pageSize.getWidth();
   var pageHeight = doc.internal.pageSize.getHeight();
-  var months = document.querySelectorAll(".month-container");
-  var y = 10;
+  var margin = 15;
+  var usableWidth = pageWidth - margin * 2;
+  var cellW = usableWidth / 7;
+  var cellH = 22;
+  var headerH = 12;
+  var titleH = 20;
 
   doc.setFont("helvetica", "bold");
   doc.setFontSize(20);
   doc.setTextColor(79, 70, 229);
-  doc.text("Philippine Calendar " + year, pageWidth / 2, 15, { align: "center" });
+  doc.text("Philippine Calendar", pageWidth / 2, margin + 6, { align: "center" });
 
-  for (var m = 0; m < months.length; m++) {
-    if (y > pageHeight - 40) {
+  var monthContainers = document.querySelectorAll(".month-container");
+
+  monthContainers.forEach(function (monthEl, m) {
+    if (m > 0) {
       doc.addPage();
-      y = 10;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.setTextColor(79, 70, 229);
+      doc.text("Philippine Calendar", pageWidth / 2, margin + 6, { align: "center" });
     }
 
-    var monthEl = months[m];
     var monthTitle = monthEl.querySelector(".calendar-header p").textContent;
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(14);
     doc.setTextColor(30, 41, 59);
-    doc.text(monthTitle, 15, y + 10);
-    y += 18;
+    doc.text(monthTitle, margin, margin + titleH, { align: "left" });
 
     var dates = monthEl.querySelectorAll(".calendar-dates li");
     var weekDays = monthEl.querySelectorAll(".calendar-weekdays li");
 
-    var cellW = (pageWidth - 30) / 7;
-    var cellH = 10;
-    var startX = 15;
+    var gridTop = margin + titleH + headerH + 6;
 
     weekDays.forEach(function (wd, i) {
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setTextColor(wd.classList.contains("sunday") ? 220 : 100, wd.classList.contains("sunday") ? 38 : 64, wd.classList.contains("sunday") ? 38 : 74);
-      doc.text(wd.textContent, startX + i * cellW + cellW / 2, y + 6, { align: "center" });
+      doc.text(wd.textContent, margin + i * cellW + cellW / 2, gridTop - 4, { align: "center" });
     });
-    y += cellH;
 
     doc.setDrawColor(226, 232, 240);
     dates.forEach(function (d, i) {
       var col = i % 7;
       var row = Math.floor(i / 7);
-      var x = startX + col * cellW;
-      var yy = y + row * cellH;
+      var x = margin + col * cellW;
+      var yy = gridTop + row * cellH;
 
       doc.rect(x, yy, cellW, cellH);
 
       if (!d.classList.contains("inactive")) {
+        var holidayName = d.getAttribute("data-holiday-name");
+
         doc.setFontSize(10);
         if (d.classList.contains("sunday") || d.classList.contains("regular-holiday") || d.classList.contains("special-non-working") || d.classList.contains("special-working")) {
           doc.setTextColor(220, 38, 38);
@@ -219,12 +298,17 @@ document.getElementById("export-pdf").addEventListener("click", function () {
           doc.setTextColor(30, 41, 59);
           doc.setFont("helvetica", "normal");
         }
-        doc.text(d.textContent, x + cellW / 2, yy + cellH / 2 + 3, { align: "center" });
+        doc.text(d.textContent, x + cellW / 2, yy + 7, { align: "center" });
+
+        if (holidayName) {
+          doc.setFontSize(5.5);
+          doc.setTextColor(220, 38, 38);
+          doc.setFont("helvetica", "bold");
+          doc.text(holidayName, x + cellW / 2, yy + cellH - 2, { align: "center" });
+        }
       }
     });
-
-    y += Math.ceil(dates.length / 7) * cellH + 14;
-  }
+  });
 
   doc.save("Philippine-Calendar-" + year + ".pdf");
 });
