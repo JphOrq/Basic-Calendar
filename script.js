@@ -19,29 +19,29 @@ var months = [
   "December",
 ];
 
-// Base holiday data
+// Philippine Holidays
+// type: "regular-holiday" | "special-non-working" | "special-working"
 var baseHolidays = {
-  January: { 1: "regular-holiday" },
-  February: { 25: "regular-holiday", 10: "special-non-working" },
-  March: {
-    28: "regular-holiday",
-    29: "regular-holiday",
-    30: "special-non-working",
-  },
-  April: { 9: "regular-holiday", 10: "special-non-working" },
-  May: { 1: "regular-holiday" },
-  June: { 12: "regular-holiday", 17: "regular-holiday" },
-  August: { 21: "special-non-working", 26: "regular-holiday" },
+  January: { 1: { type: "regular-holiday", name: "New Year's Day" } },
+  February: { 25: { type: "special-working", name: "EDSA People Power Revolution Anniversary" } },
+  March: {},
+  April: { 9: { type: "regular-holiday", name: "Araw ng Kagitingan (Day of Valor)" } },
+  May: { 1: { type: "regular-holiday", name: "Labor Day" } },
+  June: { 12: { type: "regular-holiday", name: "Independence Day" } },
+  July: {},
+  August: { 21: { type: "special-non-working", name: "Ninoy Aquino Day" } },
+  September: {},
+  October: {},
   November: {
-    1: "special-non-working",
-    2: "special-non-working",
-    30: "regular-holiday",
+    1: { type: "special-non-working", name: "All Saints' Day" },
+    2: { type: "special-non-working", name: "All Souls' Day" },
+    30: { type: "regular-holiday", name: "Bonifacio Day" },
   },
   December: {
-    24: "special-non-working",
-    25: "regular-holiday",
-    30: "regular-holiday",
-    31: "special-non-working",
+    24: { type: "special-non-working", name: "Christmas Eve" },
+    25: { type: "regular-holiday", name: "Christmas Day" },
+    30: { type: "regular-holiday", name: "Rizal Day" },
+    31: { type: "special-non-working", name: "Last Day of the Year" },
   },
 };
 
@@ -75,17 +75,21 @@ var generateCalendar = (year, month) => {
       i === date.getDate() &&
       month === new Date().getMonth() &&
       year === new Date().getFullYear()
-        ? "" //"active"
+        ? "active"
         : "";
     var dayOfWeek = new Date(year, month, i).getDay();
     var sundayClass = dayOfWeek === 0 ? "sunday" : "";
-    var holidayClass =
+
+    var holidayInfo =
       holidays[year] &&
       holidays[year][months[month]] &&
       holidays[year][months[month]][i]
         ? holidays[year][months[month]][i]
-        : "";
-    lit += `<li class="${isToday} ${sundayClass} ${holidayClass}">${i}</li>`;
+        : null;
+    var holidayClass = holidayInfo ? holidayInfo.type : "";
+    var holidayTitle = holidayInfo ? ` title="${holidayInfo.name}"` : "";
+
+    lit += `<li class="${isToday} ${sundayClass} ${holidayClass}"${holidayTitle}>${i}</li>`;
   }
 
   for (var i = dayend; i < 6; i++) {
@@ -141,3 +145,73 @@ var updateYearFromDropdown = () => {
 populateYearDropdown();
 yearDropdown.addEventListener("change", updateYearFromDropdown);
 renderYear(year);
+
+document.getElementById("export-pdf").addEventListener("click", function () {
+  var { jsPDF } = window.jspdf;
+  var doc = new jsPDF("p", "mm", "a4");
+  var pageWidth = doc.internal.pageSize.getWidth();
+  var pageHeight = doc.internal.pageSize.getHeight();
+  var months = document.querySelectorAll(".month-container");
+  var y = 10;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(20);
+  doc.setTextColor(79, 70, 229);
+  doc.text("Philippine Calendar " + year, pageWidth / 2, 15, { align: "center" });
+
+  for (var m = 0; m < months.length; m++) {
+    if (y > pageHeight - 40) {
+      doc.addPage();
+      y = 10;
+    }
+
+    var monthEl = months[m];
+    var monthTitle = monthEl.querySelector(".calendar-header p").textContent;
+
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.setTextColor(30, 41, 59);
+    doc.text(monthTitle, 15, y + 10);
+    y += 18;
+
+    var dates = monthEl.querySelectorAll(".calendar-dates li");
+    var weekDays = monthEl.querySelectorAll(".calendar-weekdays li");
+
+    var cellW = (pageWidth - 30) / 7;
+    var cellH = 10;
+    var startX = 15;
+
+    weekDays.forEach(function (wd, i) {
+      doc.setFontSize(9);
+      doc.setTextColor(wd.classList.contains("sunday") ? 220 : 100, wd.classList.contains("sunday") ? 38 : 64, wd.classList.contains("sunday") ? 38 : 74);
+      doc.text(wd.textContent, startX + i * cellW + cellW / 2, y + 6, { align: "center" });
+    });
+    y += cellH;
+
+    doc.setDrawColor(226, 232, 240);
+    dates.forEach(function (d, i) {
+      var col = i % 7;
+      var row = Math.floor(i / 7);
+      var x = startX + col * cellW;
+      var yy = y + row * cellH;
+
+      doc.rect(x, yy, cellW, cellH);
+
+      if (!d.classList.contains("inactive")) {
+        doc.setFontSize(10);
+        if (d.classList.contains("sunday") || d.classList.contains("regular-holiday") || d.classList.contains("special-non-working") || d.classList.contains("special-working")) {
+          doc.setTextColor(220, 38, 38);
+          doc.setFont("helvetica", "bold");
+        } else {
+          doc.setTextColor(30, 41, 59);
+          doc.setFont("helvetica", "normal");
+        }
+        doc.text(d.textContent, x + cellW / 2, yy + cellH / 2 + 3, { align: "center" });
+      }
+    });
+
+    y += Math.ceil(dates.length / 7) * cellH + 14;
+  }
+
+  doc.save("Philippine-Calendar-" + year + ".pdf");
+});
