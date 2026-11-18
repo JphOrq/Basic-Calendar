@@ -146,6 +146,19 @@ populateYearDropdown();
 yearDropdown.addEventListener("change", updateYearFromDropdown);
 renderYear(year);
 
+// Get the current year
+var currentYear = new Date().getFullYear();
+
+// Update the content of the element with id="currentYear"
+document.addEventListener("DOMContentLoaded", function () {
+  var currentYearEl = document.getElementById("currentYear");
+  if (currentYearEl) {
+    currentYearEl.textContent = currentYear;
+  } else {
+    console.warn("Element #currentYear not found");
+  }
+});
+
 document.getElementById("export-pdf").addEventListener("click", function () {
   var { jsPDF } = window.jspdf;
   var doc = new jsPDF("p", "mm", "a4");
