@@ -38,6 +38,7 @@ var baseHolidays = {
     30: { type: "regular-holiday", name: "Bonifacio Day" },
   },
   December: {
+    8: { type: "special-non-working", name: "Feast of the Immaculate Conception of Mary" },
     24: { type: "special-non-working", name: "Christmas Eve" },
     25: { type: "regular-holiday", name: "Christmas Day" },
     30: { type: "regular-holiday", name: "Rizal Day" },
@@ -255,7 +256,7 @@ document.getElementById("export-pdf").addEventListener("click", function () {
     if (m > 0) {
       doc.addPage();
       doc.setFont("helvetica", "bold");
-      doc.setFontSize(20);
+      doc.setFontSize(30);
       doc.setTextColor(79, 70, 229);
       doc.text("Philippine Calendar", pageWidth / 2, margin + 6, { align: "center" });
     }
@@ -263,7 +264,7 @@ document.getElementById("export-pdf").addEventListener("click", function () {
     var monthTitle = monthEl.querySelector(".calendar-header p").textContent;
 
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
+    doc.setFontSize(30);
     doc.setTextColor(30, 41, 59);
     doc.text(monthTitle, margin, margin + titleH, { align: "left" });
 
@@ -273,7 +274,7 @@ document.getElementById("export-pdf").addEventListener("click", function () {
     var gridTop = margin + titleH + headerH + 6;
 
     weekDays.forEach(function (wd, i) {
-      doc.setFontSize(8);
+      doc.setFontSize(15);
       doc.setTextColor(wd.classList.contains("sunday") ? 220 : 100, wd.classList.contains("sunday") ? 38 : 64, wd.classList.contains("sunday") ? 38 : 74);
       doc.text(wd.textContent, margin + i * cellW + cellW / 2, gridTop - 4, { align: "center" });
     });
@@ -290,7 +291,8 @@ document.getElementById("export-pdf").addEventListener("click", function () {
       if (!d.classList.contains("inactive")) {
         var holidayName = d.getAttribute("data-holiday-name");
 
-        doc.setFontSize(10);
+        doc.setFontSize(30);
+        var textY = yy + cellH / 2 + 3.5;
         if (d.classList.contains("sunday") || d.classList.contains("regular-holiday") || d.classList.contains("special-non-working") || d.classList.contains("special-working")) {
           doc.setTextColor(220, 38, 38);
           doc.setFont("helvetica", "bold");
@@ -298,13 +300,19 @@ document.getElementById("export-pdf").addEventListener("click", function () {
           doc.setTextColor(30, 41, 59);
           doc.setFont("helvetica", "normal");
         }
-        doc.text(d.textContent, x + cellW / 2, yy + 7, { align: "center" });
+        doc.text(d.textContent, x + cellW / 2, textY, { align: "center" });
 
         if (holidayName) {
           doc.setFontSize(5.5);
           doc.setTextColor(220, 38, 38);
           doc.setFont("helvetica", "bold");
-          doc.text(holidayName, x + cellW / 2, yy + cellH - 2, { align: "center" });
+          var maxWidth = cellW - 4;
+          var lines = doc.splitTextToSize(holidayName, maxWidth);
+          var lineHeight = 3.5;
+          var startY = yy + cellH - 2 - (lines.length - 1) * lineHeight;
+          lines.forEach(function (line, i) {
+            doc.text(line, x + cellW / 2, startY + i * lineHeight, { align: "center" });
+          });
         }
       }
     });
